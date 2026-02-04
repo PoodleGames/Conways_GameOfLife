@@ -206,3 +206,19 @@ theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031
 placeholder_text = "50"
 alignment = 1
 max_length = 4
+
+[node name="Field_6" type="Label" parent="Camera2D"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -99.0
+offset_top = 479.325
+offset_right = 99.0
+offset_bottom = 505.32507
+grow_horizontal = 2
+grow_vertical = 0
+text = "Press Space to Reset"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1

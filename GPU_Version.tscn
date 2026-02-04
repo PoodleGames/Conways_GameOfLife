@@ -1,0 +1,208 @@
+[gd_scene load_steps=6 format=3 uid="uid://ce0sy1d4vx2q3"]
+
+[ext_resource type="Texture2D" uid="uid://db8157fsnb30e" path="res://bg.png" id="1_3y4sw"]
+[ext_resource type="Script" uid="uid://b7ilysdpw7pwp" path="res://gpu_version.gd" id="1_qbcdr"]
+[ext_resource type="Texture2D" uid="uid://rxmfcit8005" path="res://logo.png" id="2_ngy8e"]
+[ext_resource type="LabelSettings" uid="uid://dm5yrhwxsi0fu" path="res://cyn.tres" id="4_565nr"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_3y4sw"]
+font_size = 18
+font_color = Color(0.3854925, 0.38549247, 0.38549247, 1)
+outline_color = Color(0.47397572, 0.47397572, 0.47397572, 1)
+shadow_color = Color(0.4627451, 0.4627451, 0.4627451, 0.05882353)
+
+[node name="Node2D" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="Sprite2D" type="Sprite2D" parent="Camera2D"]
+texture = ExtResource("1_3y4sw")
+
+[node name="Sprite2D2" type="Sprite2D" parent="Camera2D"]
+position = Vector2(480, -411)
+scale = Vector2(0.27, 0.27)
+texture = ExtResource("2_ngy8e")
+
+[node name="Node2D" type="Node2D" parent="Camera2D"]
+position = Vector2(-599, -463)
+script = ExtResource("1_qbcdr")
+
+[node name="Field_1" type="Label" parent="Camera2D"]
+offset_left = 384.0
+offset_top = -322.0
+offset_right = 582.0
+offset_bottom = -297.0
+text = "Simulation"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1
+
+[node name="Field_2" type="Label" parent="Camera2D"]
+offset_left = 384.0
+offset_top = -148.5
+offset_right = 582.0
+offset_bottom = -123.5
+text = "Seed"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1
+
+[node name="Field_3" type="Label" parent="Camera2D"]
+offset_left = 384.0
+offset_top = 21.54
+offset_right = 582.0
+offset_bottom = 46.540062
+text = "Auto Reset"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1
+
+[node name="Field_4" type="Label" parent="Camera2D"]
+offset_left = 384.0
+offset_top = 189.865
+offset_right = 582.0
+offset_bottom = 214.86497
+text = "Chaos"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1
+
+[node name="Field_5" type="Label" parent="Camera2D"]
+offset_left = 362.0
+offset_top = 362.0
+offset_right = 602.0
+offset_bottom = 391.0
+text = "PoodleGames"
+label_settings = ExtResource("4_565nr")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MainSettings" type="GridContainer" parent="Camera2D"]
+offset_left = 375.0
+offset_top = -275.0
+offset_right = 589.0
+offset_bottom = -172.0
+columns = 2
+
+[node name="GameSpeed" type="Label" parent="Camera2D/MainSettings"]
+layout_mode = 2
+text = "Speed:"
+label_settings = SubResource("LabelSettings_3y4sw")
+
+[node name="gamespeed" type="LineEdit" parent="Camera2D/MainSettings"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 1
+theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
+placeholder_text = "120"
+alignment = 1
+max_length = 3
+
+[node name="Density" type="Label" parent="Camera2D/MainSettings"]
+layout_mode = 2
+text = "Density: "
+label_settings = SubResource("LabelSettings_3y4sw")
+
+[node name="density" type="LineEdit" parent="Camera2D/MainSettings"]
+layout_mode = 2
+focus_mode = 1
+theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
+placeholder_text = "0.2"
+alignment = 1
+max_length = 3
+
+[node name="Pixelsize" type="Label" parent="Camera2D/MainSettings"]
+layout_mode = 2
+text = "Pixelsize: "
+label_settings = SubResource("LabelSettings_3y4sw")
+
+[node name="pixelsize" type="LineEdit" parent="Camera2D/MainSettings"]
+layout_mode = 2
+focus_mode = 1
+theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
+placeholder_text = "1"
+alignment = 1
+max_length = 2
+
+[node name="PatternSettings" type="GridContainer" parent="Camera2D"]
+offset_left = 375.0
+offset_top = -83.45
+offset_right = 589.0
+offset_bottom = -33.449997
+
+[node name="Pattern" type="Label" parent="Camera2D/PatternSettings"]
+layout_mode = 2
+text = "Start Pattern:"
+label_settings = SubResource("LabelSettings_3y4sw")
+horizontal_alignment = 1
+
+[node name="pattern" type="OptionButton" parent="Camera2D/PatternSettings"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 1
+mouse_default_cursor_shape = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+alignment = 1
+
+[node name="Restart" type="GridContainer" parent="Camera2D"]
+offset_left = 375.0
+offset_top = 88.0
+offset_right = 588.99945
+offset_bottom = 164.0
+columns = 2
+
+[node name="Pattern" type="Label" parent="Camera2D/Restart"]
+layout_mode = 2
+text = "Auto-Restart: "
+label_settings = SubResource("LabelSettings_3y4sw")
+horizontal_alignment = 1
+
+[node name="pattern" type="OptionButton" parent="Camera2D/Restart"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 1
+mouse_default_cursor_shape = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+alignment = 1
+
+[node name="Interval" type="Label" parent="Camera2D/Restart"]
+layout_mode = 2
+text = "Check Interval: "
+label_settings = SubResource("LabelSettings_3y4sw")
+
+[node name="interval" type="LineEdit" parent="Camera2D/Restart"]
+layout_mode = 2
+focus_mode = 1
+theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
+placeholder_text = "50"
+alignment = 1
+max_length = 4
+
+[node name="Inject" type="GridContainer" parent="Camera2D"]
+offset_left = 375.0
+offset_top = 251.51
+offset_right = 588.99945
+offset_bottom = 312.511
+columns = 2
+
+[node name="inject" type="Label" parent="Camera2D/Inject"]
+layout_mode = 2
+text = "Inject Chaos: "
+label_settings = SubResource("LabelSettings_3y4sw")
+horizontal_alignment = 1
+
+[node name="Inject" type="OptionButton" parent="Camera2D/Inject"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+alignment = 1
+
+[node name="Interval" type="Label" parent="Camera2D/Inject"]
+layout_mode = 2
+text = "Interval: "
+label_settings = SubResource("LabelSettings_3y4sw")
+
+[node name="interval" type="LineEdit" parent="Camera2D/Inject"]
+layout_mode = 2
+focus_mode = 1
+theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
+placeholder_text = "50"
+alignment = 1
+max_length = 4

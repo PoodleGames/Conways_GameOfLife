@@ -1,21 +1,27 @@
-# Godot 4.x - GPU-Accelerated Conway's Game of Life with UI
+# Godot 4.x - GPU-Accelerated Conway's Game of Life with Beautiful GPU Colors
 extends Node2D
 
 @export var grid_w: int = 920
 @export var grid_h: int = 925
-@export_range(1, 120, 1) var ticks_per_second: int = 120
+@export_range(1, 120, 1) var ticks_per_second: int = 15
 @export var random_fill: bool = true
 @export_range(0.0, 1.0, 0.01) var random_density: float = 0.10
 @export_range(1, 8, 1) var pixel_scale: int = 1
 
-# Base grid size (wird beim Start gespeichert)
+# Base grid size
 var base_grid_w: int = 920
 var base_grid_h: int = 925
 
 enum StartPattern { RANDOM, RANDOM_CLUSTERS, ACORN, R_PENTOMINO, GOSPER_GLIDER_GUN }
 @export var start_pattern: StartPattern = StartPattern.RANDOM_CLUSTERS
 
-# Auto-Restart bei Still Life
+# Visual Settings
+enum ColorScheme { CYAN_PURPLE, FIRE, OCEAN, MATRIX, SUNSET, MINT }
+@export var color_scheme: ColorScheme = ColorScheme.CYAN_PURPLE
+@export var enable_glow: bool = true
+@export_range(0.0, 1.0, 0.05) var glow_strength: float = 0.3
+
+# Auto-Restart
 @export var auto_restart_on_stable: bool = true
 @export var stability_check_interval: int = 50
 
@@ -33,15 +39,22 @@ enum StartPattern { RANDOM, RANDOM_CLUSTERS, ACORN, R_PENTOMINO, GOSPER_GLIDER_G
 @onready var inject_option: OptionButton = $"../Inject/Inject"
 @onready var inject_interval_input: LineEdit = $"../Inject/interval"
 
-# GPU Resources
+# GPU Resources - Game of Life
 var rd: RenderingDevice
-var shader: RID
-var pipeline: RID
+var gol_shader: RID
+var gol_pipeline: RID
 var uniform_set_a: RID
 var uniform_set_b: RID
 var texture_a: RID
 var texture_b: RID
 var current_is_a: bool = true
+
+# GPU Resources - Color Conversion
+var color_shader: RID
+var color_pipeline: RID
+var color_texture: RID
+var color_uniform_set_a: RID
+var color_uniform_set_b: RID
 
 # Display
 var img: Image
@@ -51,35 +64,75 @@ var sprite: Sprite2D
 var acc := 0.0
 var generation := 0
 
-# Stability Detection
+# Stability
 var last_grid_hash: int = 0
 var stable_count: int = 0
 
-# Chaos Injection Timer
+# Chaos Timer
 var inject_timer: float = 0.0
 
+# Color Schemes
+var color_schemes := {
+	ColorScheme.CYAN_PURPLE: {
+		"dead": Color(0.05, 0.05, 0.15, 1.0),
+		"alive": Color(0.3, 0.8, 1.0, 1.0),
+		"glow": Color(0.6, 0.3, 1.0, 1.0)
+	},
+	ColorScheme.FIRE: {
+		"dead": Color(0.1, 0.05, 0.0, 1.0),
+		"alive": Color(1.0, 0.5, 0.1, 1.0),
+		"glow": Color(1.0, 0.9, 0.3, 1.0)
+	},
+	ColorScheme.OCEAN: {
+		"dead": Color(0.0, 0.05, 0.1, 1.0),
+		"alive": Color(0.2, 0.7, 0.8, 1.0),
+		"glow": Color(0.4, 0.9, 1.0, 1.0)
+	},
+	ColorScheme.MATRIX: {
+		"dead": Color(0.0, 0.05, 0.0, 1.0),
+		"alive": Color(0.2, 1.0, 0.2, 1.0),
+		"glow": Color(0.6, 1.0, 0.6, 1.0)
+	},
+	ColorScheme.SUNSET: {
+		"dead": Color(0.1, 0.05, 0.15, 1.0),
+		"alive": Color(1.0, 0.4, 0.6, 1.0),
+		"glow": Color(1.0, 0.7, 0.3, 1.0)
+	},
+	ColorScheme.MINT: {
+		"dead": Color(0.05, 0.1, 0.1, 1.0),
+		"alive": Color(0.4, 1.0, 0.8, 1.0),
+		"glow": Color(0.7, 1.0, 0.9, 1.0)
+	}
+}
+
 func _ready() -> void:
-	# Basis-Gridgröße speichern
 	base_grid_w = grid_w
 	base_grid_h = grid_h
 	
-	# RenderingDevice holen
 	rd = RenderingServer.create_local_rendering_device()
 	if not rd:
 		push_error("GPU Compute nicht verfügbar!")
 		return
 	
-	# Shader laden
-	var shader_file := load("res://game_of_life.glsl") as RDShaderFile
-	var shader_spirv := shader_file.get_spirv()
-	shader = rd.shader_create_from_spirv(shader_spirv)
-	pipeline = rd.compute_pipeline_create(shader)
+	var gol_shader_file := load("res://game_of_life.glsl") as RDShaderFile
+	if not gol_shader_file:
+		push_error("game_of_life.glsl konnte nicht geladen werden!")
+		return
+	var gol_shader_spirv := gol_shader_file.get_spirv()
+	gol_shader = rd.shader_create_from_spirv(gol_shader_spirv)
+	gol_pipeline = rd.compute_pipeline_create(gol_shader)
 	
-	# Texturen erstellen
+	var color_shader_file := load("res://color_converter.glsl") as RDShaderFile
+	if not color_shader_file:
+		push_error("color_converter.glsl konnte nicht geladen werden!")
+		return
+	var color_shader_spirv := color_shader_file.get_spirv()
+	color_shader = rd.shader_create_from_spirv(color_shader_spirv)
+	color_pipeline = rd.compute_pipeline_create(color_shader)
+	
 	create_gpu_textures()
 	
-	# Display setup
-	img = Image.create(grid_w, grid_h, false, Image.FORMAT_L8)
+	img = Image.create(grid_w, grid_h, false, Image.FORMAT_RGBA8)
 	tex = ImageTexture.create_from_image(img)
 	sprite = Sprite2D.new()
 	sprite.texture = tex
@@ -87,51 +140,34 @@ func _ready() -> void:
 	sprite.scale = Vector2(pixel_scale, pixel_scale)
 	add_child(sprite)
 	
-	# Initialisierung
 	if random_fill:
 		initialize_pattern()
 	else:
 		clear_grid()
 	
 	upload_to_gpu()
+	convert_colors_gpu()
 	download_from_gpu()
 	
-	# UI Setup AFTER everything else (deferred to ensure @onready vars are ready)
 	call_deferred("setup_ui")
 
 func setup_ui() -> void:
-	print("=== UI SETUP DEBUG ===")
-	print("gamespeed_input: ", gamespeed_input)
-	print("density_input: ", density_input)
-	print("pixelsize_input: ", pixelsize_input)
-	print("pattern_option: ", pattern_option)
-	print("restart_option: ", restart_option)
-	print("restart_interval_input: ", restart_interval_input)
-	print("inject_option: ", inject_option)
-	print("inject_interval_input: ", inject_interval_input)
-	print("======================")
-	
-	# MainSettings - LineEdits
 	if gamespeed_input:
 		gamespeed_input.text = str(ticks_per_second)
-		gamespeed_input.placeholder_text = str(ticks_per_second)
 		gamespeed_input.text_changed.connect(_on_gamespeed_changed)
 		gamespeed_input.text_submitted.connect(func(_t): gamespeed_input.release_focus())
 	
 	if density_input:
 		density_input.text = str(random_density)
-		density_input.placeholder_text = str(random_density)
 		density_input.text_changed.connect(_on_density_changed)
 		density_input.text_submitted.connect(func(_t): density_input.release_focus())
 	
 	if pixelsize_input:
 		pixelsize_input.text = str(pixel_scale)
-		pixelsize_input.placeholder_text = str(pixel_scale)
-		pixelsize_input.max_length = 1  # Nur 1 Ziffer erlaubt (1-8)
+		pixelsize_input.max_length = 1
 		pixelsize_input.text_changed.connect(_on_pixelsize_changed)
 		pixelsize_input.text_submitted.connect(func(_t): pixelsize_input.release_focus())
 	
-	# PatternSettings - OptionButton
 	if pattern_option:
 		pattern_option.clear()
 		pattern_option.add_item("RANDOM", StartPattern.RANDOM)
@@ -143,7 +179,6 @@ func setup_ui() -> void:
 		pattern_option.item_selected.connect(_on_pattern_selected)
 		pattern_option.item_selected.connect(func(_i): pattern_option.release_focus())
 	
-	# Restart - OptionButton
 	if restart_option:
 		restart_option.clear()
 		restart_option.add_item("true", 0)
@@ -154,11 +189,9 @@ func setup_ui() -> void:
 	
 	if restart_interval_input:
 		restart_interval_input.text = str(stability_check_interval)
-		restart_interval_input.placeholder_text = str(stability_check_interval)
 		restart_interval_input.text_changed.connect(_on_restart_interval_changed)
 		restart_interval_input.text_submitted.connect(func(_t): restart_interval_input.release_focus())
 	
-	# Inject - OptionButton
 	if inject_option:
 		inject_option.clear()
 		inject_option.add_item("true", 0)
@@ -169,77 +202,60 @@ func setup_ui() -> void:
 	
 	if inject_interval_input:
 		inject_interval_input.text = str(inject_interval)
-		inject_interval_input.placeholder_text = str(inject_interval)
 		inject_interval_input.text_changed.connect(_on_inject_interval_changed)
 		inject_interval_input.text_submitted.connect(func(_t): inject_interval_input.release_focus())
-
-# ============ UI CALLBACKS ============
 
 func _on_gamespeed_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value >= 1:
 		ticks_per_second = value
-		print("Game Speed updated: ", ticks_per_second)
 
 func _on_density_changed(new_text: String) -> void:
 	var value = new_text.to_float()
 	if value >= 0.0 and value <= 1.0:
 		random_density = value
-		print("Density updated: ", random_density)
 
 func _on_pixelsize_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value >= 1 and value <= 8:
 		pixel_scale = value
-		
-		# Neue Grid-Größe berechnen (kleiner bei größeren Pixeln)
 		var new_grid_w = base_grid_w / pixel_scale
 		var new_grid_h = base_grid_h / pixel_scale
 		
-		print("Pixel Scale: %d | New Grid: %dx%d" % [pixel_scale, new_grid_w, new_grid_h])
-		
-		# Nur neu erstellen wenn sich Größe ändert
 		if new_grid_w != grid_w or new_grid_h != grid_h:
 			grid_w = new_grid_w
 			grid_h = new_grid_h
 			recreate_simulation()
 		else:
-			# Nur Sprite skalieren
 			if sprite:
 				sprite.scale = Vector2(pixel_scale, pixel_scale)
 
 func _on_pattern_selected(index: int) -> void:
 	start_pattern = index as StartPattern
-	print("Start Pattern updated: ", StartPattern.keys()[start_pattern])
 
 func _on_restart_option_selected(index: int) -> void:
 	auto_restart_on_stable = (index == 0)
-	print("Auto Restart updated: ", auto_restart_on_stable)
 
 func _on_restart_interval_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value > 0:
 		stability_check_interval = value
-		print("Restart Interval updated: ", stability_check_interval)
 
 func _on_inject_option_selected(index: int) -> void:
 	inject_chaos = (index == 0)
-	print("Inject Chaos updated: ", inject_chaos)
 
 func _on_inject_interval_changed(new_text: String) -> void:
 	var value = new_text.to_float()
 	if value > 0.0:
 		inject_interval = value
-		print("Inject Interval updated: ", inject_interval)
-
-# ============ REST OF THE CODE ============
 
 func create_gpu_textures() -> void:
-	var fmt := RDTextureFormat.new()
-	fmt.width = grid_w
-	fmt.height = grid_h
-	fmt.format = RenderingDevice.DATA_FORMAT_R8_UNORM
-	fmt.usage_bits = (
+	# Game of Life Texturen (R8)
+	var fmt_r8 := RDTextureFormat.new()
+	fmt_r8.width = grid_w
+	fmt_r8.height = grid_h
+	fmt_r8.format = RenderingDevice.DATA_FORMAT_R8_UNORM
+	fmt_r8.usage_bits = (
 		RenderingDevice.TEXTURE_USAGE_STORAGE_BIT |
 		RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT |
 		RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
@@ -249,8 +265,24 @@ func create_gpu_textures() -> void:
 	empty_data.resize(grid_w * grid_h)
 	empty_data.fill(0)
 	
-	texture_a = rd.texture_create(fmt, RDTextureView.new(), [empty_data])
-	texture_b = rd.texture_create(fmt, RDTextureView.new(), [empty_data])
+	texture_a = rd.texture_create(fmt_r8, RDTextureView.new(), [empty_data])
+	texture_b = rd.texture_create(fmt_r8, RDTextureView.new(), [empty_data])
+	
+	# Color Output Texture (RGBA8)
+	var fmt_rgba := RDTextureFormat.new()
+	fmt_rgba.width = grid_w
+	fmt_rgba.height = grid_h
+	fmt_rgba.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	fmt_rgba.usage_bits = (
+		RenderingDevice.TEXTURE_USAGE_STORAGE_BIT |
+		RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+	)
+	
+	var empty_rgba := PackedByteArray()
+	empty_rgba.resize(grid_w * grid_h * 4)
+	empty_rgba.fill(0)
+	
+	color_texture = rd.texture_create(fmt_rgba, RDTextureView.new(), [empty_rgba])
 	
 	create_uniform_sets()
 
@@ -265,7 +297,7 @@ func create_uniform_sets() -> void:
 	uniform_output_b.binding = 1
 	uniform_output_b.add_id(texture_b)
 	
-	uniform_set_a = rd.uniform_set_create([uniform_input_a, uniform_output_b], shader, 0)
+	uniform_set_a = rd.uniform_set_create([uniform_input_a, uniform_output_b], gol_shader, 0)
 	
 	var uniform_input_b := RDUniform.new()
 	uniform_input_b.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
@@ -277,7 +309,26 @@ func create_uniform_sets() -> void:
 	uniform_output_a.binding = 1
 	uniform_output_a.add_id(texture_a)
 	
-	uniform_set_b = rd.uniform_set_create([uniform_input_b, uniform_output_a], shader, 0)
+	uniform_set_b = rd.uniform_set_create([uniform_input_b, uniform_output_a], gol_shader, 0)
+	
+	var color_in_a := RDUniform.new()
+	color_in_a.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	color_in_a.binding = 0
+	color_in_a.add_id(texture_a)
+	
+	var color_out := RDUniform.new()
+	color_out.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	color_out.binding = 1
+	color_out.add_id(color_texture)
+	
+	color_uniform_set_a = rd.uniform_set_create([color_in_a, color_out], color_shader, 0)
+	
+	var color_in_b := RDUniform.new()
+	color_in_b.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	color_in_b.binding = 0
+	color_in_b.add_id(texture_b)
+	
+	color_uniform_set_b = rd.uniform_set_create([color_in_b, color_out], color_shader, 0)
 
 func _process(delta: float) -> void:
 	handle_input()
@@ -294,6 +345,7 @@ func _process(delta: float) -> void:
 		generation += 1
 	
 	if steps > 0:
+		convert_colors_gpu()
 		download_from_gpu()
 		
 		if auto_restart_on_stable and generation % stability_check_interval == 0:
@@ -307,7 +359,7 @@ func _process(delta: float) -> void:
 
 func sim_step_gpu() -> void:
 	var compute_list := rd.compute_list_begin()
-	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
+	rd.compute_list_bind_compute_pipeline(compute_list, gol_pipeline)
 	
 	if current_is_a:
 		rd.compute_list_bind_uniform_set(compute_list, uniform_set_a, 0)
@@ -324,6 +376,49 @@ func sim_step_gpu() -> void:
 	
 	current_is_a = !current_is_a
 
+func convert_colors_gpu() -> void:
+	var colors = color_schemes[color_scheme]
+	
+	var push_data := PackedByteArray()
+	push_data.resize(64)
+	
+	var offset := 0
+	push_data.encode_float(offset, colors["dead"].r); offset += 4
+	push_data.encode_float(offset, colors["dead"].g); offset += 4
+	push_data.encode_float(offset, colors["dead"].b); offset += 4
+	push_data.encode_float(offset, colors["dead"].a); offset += 4
+	
+	push_data.encode_float(offset, colors["alive"].r); offset += 4
+	push_data.encode_float(offset, colors["alive"].g); offset += 4
+	push_data.encode_float(offset, colors["alive"].b); offset += 4
+	push_data.encode_float(offset, colors["alive"].a); offset += 4
+	
+	push_data.encode_float(offset, colors["glow"].r); offset += 4
+	push_data.encode_float(offset, colors["glow"].g); offset += 4
+	push_data.encode_float(offset, colors["glow"].b); offset += 4
+	push_data.encode_float(offset, colors["glow"].a); offset += 4
+	
+	push_data.encode_float(offset, glow_strength); offset += 4
+	push_data.encode_float(offset, 1.0 if enable_glow else 0.0)
+	
+	var compute_list := rd.compute_list_begin()
+	rd.compute_list_bind_compute_pipeline(compute_list, color_pipeline)
+	
+	if current_is_a:
+		rd.compute_list_bind_uniform_set(compute_list, color_uniform_set_a, 0)
+	else:
+		rd.compute_list_bind_uniform_set(compute_list, color_uniform_set_b, 0)
+	
+	rd.compute_list_set_push_constant(compute_list, push_data, push_data.size())
+	
+	var x_groups := ceili(grid_w / 8.0)
+	var y_groups := ceili(grid_h / 8.0)
+	rd.compute_list_dispatch(compute_list, x_groups, y_groups, 1)
+	rd.compute_list_end()
+	
+	rd.submit()
+	rd.sync()
+
 func check_stability() -> void:
 	var current_texture: RID = texture_a if current_is_a else texture_b
 	var data := rd.texture_get_data(current_texture, 0)
@@ -335,14 +430,13 @@ func check_stability() -> void:
 	
 	if alive_count == last_grid_hash:
 		stable_count += 1
-		
 		if stable_count >= 5:
-			print("🔄 Still Life erkannt! Neustart bei Generation %d (Alive: %d)" % [generation, alive_count])
 			initialize_pattern()
 			upload_to_gpu()
 			generation = 0
 			stable_count = 0
 			last_grid_hash = 0
+			convert_colors_gpu()
 			download_from_gpu()
 			return
 	else:
@@ -359,12 +453,15 @@ func inject_random_life() -> void:
 		data[idx] = 255
 	
 	rd.texture_update(current_texture, 0, data)
-	print("💥 Chaos injiziert!")
+
+# --- Debounce Locks (müssen im Script-Scope stehen, NICHT in der Funktion) ---
+var c_lock: bool = false
+var g_lock: bool = false
+
 
 func handle_input() -> void:
-	# Focus von UI-Elementen entfernen bei Tastendruck
+	# Fokus lösen
 	if Input.is_action_just_pressed("ui_select") or Input.is_action_just_pressed("ui_cancel"):
-		# Release focus von allen UI-Elementen
 		if gamespeed_input and gamespeed_input.has_focus():
 			gamespeed_input.release_focus()
 		if density_input and density_input.has_focus():
@@ -381,24 +478,46 @@ func handle_input() -> void:
 			restart_option.release_focus()
 		if inject_option and inject_option.has_focus():
 			inject_option.release_focus()
-	
-	if Input.is_action_just_pressed("ui_select") or Input.is_key_pressed(KEY_R):
-		# Space oder R - Neustart mit neuem Pattern
+
+	# Neustart (wie bei dir)
+	if Input.is_action_just_pressed("ui_select") or Input.is_key_pressed(KEY_R) or Input.is_key_pressed(KEY_SPACE):
 		initialize_pattern()
 		upload_to_gpu()
 		generation = 0
 		stable_count = 0
 		last_grid_hash = 0
+		convert_colors_gpu()
 		download_from_gpu()
-	
+
+	# Löschen (wie bei dir)
 	if Input.is_action_just_pressed("ui_cancel"):
-		# ESC - Grid komplett leeren
 		clear_grid()
 		upload_to_gpu()
 		generation = 0
 		stable_count = 0
 		last_grid_hash = 0
+		convert_colors_gpu()
 		download_from_gpu()
+
+	# --- C: Farbschema (EXAKT 1x pro Druck) ---
+	if Input.is_key_pressed(KEY_C):
+		if not c_lock:
+			c_lock = true
+			color_scheme = (color_scheme + 1) % ColorScheme.size()
+			convert_colors_gpu()
+			download_from_gpu()
+	else:
+		c_lock = false
+
+	# --- G: Glow Toggle (EXAKT 1x pro Druck) ---
+	if Input.is_key_pressed(KEY_G):
+		if not g_lock:
+			g_lock = true
+			enable_glow = !enable_glow
+			convert_colors_gpu()
+			download_from_gpu()
+	else:
+		g_lock = false
 
 var cpu_grid: PackedByteArray
 
@@ -493,65 +612,73 @@ func upload_to_gpu() -> void:
 	current_is_a = true
 
 func download_from_gpu() -> void:
-	var current_texture: RID = texture_a if current_is_a else texture_b
-	var data := rd.texture_get_data(current_texture, 0)
-	
-	img.set_data(grid_w, grid_h, false, Image.FORMAT_L8, data)
+	var data := rd.texture_get_data(color_texture, 0)
+	img.set_data(grid_w, grid_h, false, Image.FORMAT_RGBA8, data)
 	tex.update(img)
 
 func recreate_simulation() -> void:
-	print("🔄 Recreating simulation with grid: %dx%d, scale: %d" % [grid_w, grid_h, pixel_scale])
-	
-	# Alte GPU Resources freigeben
 	if rd:
-		if uniform_set_a.is_valid():
-			rd.free_rid(uniform_set_a)
-		if uniform_set_b.is_valid():
-			rd.free_rid(uniform_set_b)
-		if texture_a.is_valid():
-			rd.free_rid(texture_a)
-		if texture_b.is_valid():
-			rd.free_rid(texture_b)
+		rd.free_rid(uniform_set_a)
+		rd.free_rid(uniform_set_b)
+		rd.free_rid(color_uniform_set_a)
+		rd.free_rid(color_uniform_set_b)
+		rd.free_rid(texture_a)
+		rd.free_rid(texture_b)
+		rd.free_rid(color_texture)
 	
-	# Neue GPU Texturen erstellen
 	create_gpu_textures()
 	
-	# Image & Texture neu erstellen
-	img = Image.create(grid_w, grid_h, false, Image.FORMAT_L8)
+	img = Image.create(grid_w, grid_h, false, Image.FORMAT_RGBA8)
 	tex = ImageTexture.create_from_image(img)
 	
-	# Sprite updaten
 	if sprite:
 		sprite.texture = tex
 		sprite.scale = Vector2(pixel_scale, pixel_scale)
 	
-	# Pattern neu initialisieren
 	initialize_pattern()
 	upload_to_gpu()
 	generation = 0
 	stable_count = 0
 	last_grid_hash = 0
+	convert_colors_gpu()
 	download_from_gpu()
-	
-	print("✅ Simulation recreated!")
 
 func _draw() -> void:
-	var info: String = "Gen: %d | FPS: %d | GPU%s%s" % [
+	var scheme_name: String = ColorScheme.keys()[color_scheme]
+	var text_color: Color = color_schemes[color_scheme]["alive"]
+	
+	var base_pos = Vector2(10, 20)
+	if sprite:
+		base_pos = sprite.position + Vector2(10, 20)
+	
+	var info: String = "Gen: %d | FPS: %d | %s%s%s" % [
 		generation,
 		Engine.get_frames_per_second(),
-		" | Auto-Restart: ON" if auto_restart_on_stable else "",
-		" | Chaos: ON" if inject_chaos else ""
+		scheme_name,
+		" | Glow" if enable_glow else "",
+		" | Auto-Restart" if auto_restart_on_stable else ""
 	]
-	draw_string(ThemeDB.fallback_font, Vector2(10, 20), info, 
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.CYAN)
+	
+	draw_string(ThemeDB.fallback_font, base_pos, info, 
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, text_color)
+	
+	var controls: String = "[SPACE/R] Neustart | [C] Farbschema | [G] Glow | [ESC] Löschen"
+	draw_string(ThemeDB.fallback_font, base_pos + Vector2(0, 20), controls, 
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, text_color.darkened(0.3))
+	
 	queue_redraw()
 
 func _exit_tree() -> void:
 	if rd:
 		rd.free_rid(uniform_set_a)
 		rd.free_rid(uniform_set_b)
+		rd.free_rid(color_uniform_set_a)
+		rd.free_rid(color_uniform_set_b)
 		rd.free_rid(texture_a)
 		rd.free_rid(texture_b)
-		rd.free_rid(pipeline)
-		rd.free_rid(shader)
+		rd.free_rid(color_texture)
+		rd.free_rid(gol_pipeline)
+		rd.free_rid(color_pipeline)
+		rd.free_rid(gol_shader)
+		rd.free_rid(color_shader)
 		rd.free()

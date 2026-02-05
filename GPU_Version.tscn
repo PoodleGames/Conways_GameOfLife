@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://ce0sy1d4vx2q3"]
+[gd_scene load_steps=7 format=3 uid="uid://ce0sy1d4vx2q3"]
 
 [ext_resource type="Texture2D" uid="uid://db8157fsnb30e" path="res://bg.png" id="1_3y4sw"]
 [ext_resource type="Script" uid="uid://b7ilysdpw7pwp" path="res://gpu_version.gd" id="1_qbcdr"]
 [ext_resource type="Texture2D" uid="uid://rxmfcit8005" path="res://logo.png" id="2_ngy8e"]
 [ext_resource type="LabelSettings" uid="uid://dm5yrhwxsi0fu" path="res://cyn.tres" id="4_565nr"]
+[ext_resource type="Script" uid="uid://cahovgbaufsjy" path="res://overlay_font.gd" id="4_ykegg"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_3y4sw"]
 font_size = 18
@@ -26,6 +27,30 @@ texture = ExtResource("2_ngy8e")
 [node name="Node2D" type="Node2D" parent="Camera2D"]
 position = Vector2(-599, -463)
 script = ExtResource("1_qbcdr")
+
+[node name="HUD" type="Control" parent="Camera2D"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ColorRect" type="ColorRect" parent="Camera2D/HUD"]
+layout_mode = 0
+offset_left = -602.66
+offset_top = -467.0
+offset_right = -102.65997
+offset_bottom = -412.0
+color = Color(0.14733289, 0.14733289, 0.14733289, 0.558)
+
+[node name="InfoLabel" type="Label" parent="Camera2D/HUD" node_paths=PackedStringArray("target")]
+layout_mode = 0
+offset_left = -601.0
+offset_top = -465.0
+offset_right = -310.0
+offset_bottom = -225.0
+text = "asdasd"
+script = ExtResource("4_ykegg")
+target = NodePath("../../Node2D")
 
 [node name="Field_1" type="Label" parent="Camera2D"]
 offset_left = 384.0

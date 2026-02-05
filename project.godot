@@ -13,7 +13,11 @@ config_version=5
 config/name="GameOfLife"
 run/main_scene="uid://ce0sy1d4vx2q3"
 config/features=PackedStringArray("4.5", "Forward Plus")
+boot_splash/show_image=false
+boot_splash/fullsize=false
+boot_splash/image="uid://cnkr7o714p8en"
 config/icon="res://icon.svg"
+boot_splash/minimum_display_time=2000
 
 [display]
 

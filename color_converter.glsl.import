@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://cvl1gcsst2y6c"
+path="res://.godot/imported/color_converter.glsl-674951cd60f6bcb748eadf04d7d78abf.res"
+
+[deps]
+
+source_file="res://color_converter.glsl"
+dest_files=["res://.godot/imported/color_converter.glsl-674951cd60f6bcb748eadf04d7d78abf.res"]
+
+[params]
+

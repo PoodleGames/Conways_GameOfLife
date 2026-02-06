@@ -16,10 +16,18 @@ config/features=PackedStringArray("4.5", "Forward Plus")
 boot_splash/show_image=false
 boot_splash/fullsize=false
 boot_splash/image="uid://cnkr7o714p8en"
-config/icon="res://icon.svg"
+config/icon="uid://cnkr7o714p8en"
 boot_splash/minimum_display_time=2000
+
+[autoload]
+
+DiscordRPCLoader="*res://addons/discord-rpc-gd/nodes/discord_autoload.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=1024
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/discord-rpc-gd/plugin.cfg")

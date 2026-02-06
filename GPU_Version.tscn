@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://ce0sy1d4vx2q3"]
+[gd_scene load_steps=8 format=3 uid="uid://ce0sy1d4vx2q3"]
 
 [ext_resource type="Texture2D" uid="uid://db8157fsnb30e" path="res://bg.png" id="1_3y4sw"]
+[ext_resource type="Script" uid="uid://wqujsnoi5wo2" path="res://rpc.gd" id="1_itha2"]
 [ext_resource type="Script" uid="uid://b7ilysdpw7pwp" path="res://gpu_version.gd" id="1_qbcdr"]
 [ext_resource type="Texture2D" uid="uid://rxmfcit8005" path="res://logo.png" id="2_ngy8e"]
 [ext_resource type="LabelSettings" uid="uid://dm5yrhwxsi0fu" path="res://cyn.tres" id="4_565nr"]
@@ -13,6 +14,7 @@ outline_color = Color(0.47397572, 0.47397572, 0.47397572, 1)
 shadow_color = Color(0.4627451, 0.4627451, 0.4627451, 0.05882353)
 
 [node name="Node2D" type="Node2D"]
+script = ExtResource("1_itha2")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 

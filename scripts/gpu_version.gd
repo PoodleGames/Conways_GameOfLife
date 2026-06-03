@@ -114,7 +114,7 @@ func _ready() -> void:
 		push_error("GPU Compute nicht verfügbar!")
 		return
 
-	var gol_shader_file := load("res://game_of_life.glsl") as RDShaderFile
+	var gol_shader_file := load("res://shaders/game_of_life.glsl") as RDShaderFile
 	if not gol_shader_file:
 		push_error("game_of_life.glsl konnte nicht geladen werden!")
 		return
@@ -122,7 +122,7 @@ func _ready() -> void:
 	gol_shader = rd.shader_create_from_spirv(gol_shader_spirv)
 	gol_pipeline = rd.compute_pipeline_create(gol_shader)
 
-	var color_shader_file := load("res://color_converter.glsl") as RDShaderFile
+	var color_shader_file := load("res://shaders/color_converter.glsl") as RDShaderFile
 	if not color_shader_file:
 		push_error("color_converter.glsl konnte nicht geladen werden!")
 		return

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://ce0sy1d4vx2q3"]
+[gd_scene format=3 uid="uid://ce0sy1d4vx2q3"]
 
 [ext_resource type="Texture2D" uid="uid://db8157fsnb30e" path="res://bg.png" id="1_3y4sw"]
 [ext_resource type="Script" uid="uid://wqujsnoi5wo2" path="res://rpc.gd" id="1_itha2"]
@@ -13,30 +13,30 @@ font_color = Color(0.3854925, 0.38549247, 0.38549247, 1)
 outline_color = Color(0.47397572, 0.47397572, 0.47397572, 1)
 shadow_color = Color(0.4627451, 0.4627451, 0.4627451, 0.05882353)
 
-[node name="Node2D" type="Node2D"]
+[node name="Node2D" type="Node2D" unique_id=988137812]
 script = ExtResource("1_itha2")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=132681883]
 
-[node name="Sprite2D" type="Sprite2D" parent="Camera2D"]
+[node name="Sprite2D" type="Sprite2D" parent="Camera2D" unique_id=153274595]
 texture = ExtResource("1_3y4sw")
 
-[node name="Sprite2D2" type="Sprite2D" parent="Camera2D"]
+[node name="Sprite2D2" type="Sprite2D" parent="Camera2D" unique_id=1254650961]
 position = Vector2(480, -411)
 scale = Vector2(0.27, 0.27)
 texture = ExtResource("2_ngy8e")
 
-[node name="Node2D" type="Node2D" parent="Camera2D"]
+[node name="Node2D" type="Node2D" parent="Camera2D" unique_id=805388985]
 position = Vector2(-599, -463)
 script = ExtResource("1_qbcdr")
 
-[node name="HUD" type="Control" parent="Camera2D"]
+[node name="HUD" type="Control" parent="Camera2D" unique_id=1755766769]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="ColorRect" type="ColorRect" parent="Camera2D/HUD"]
+[node name="ColorRect" type="ColorRect" parent="Camera2D/HUD" unique_id=1769287300]
 layout_mode = 0
 offset_left = -602.66
 offset_top = -467.0
@@ -44,7 +44,7 @@ offset_right = -102.65997
 offset_bottom = -412.0
 color = Color(0.14733289, 0.14733289, 0.14733289, 0.558)
 
-[node name="InfoLabel" type="Label" parent="Camera2D/HUD" node_paths=PackedStringArray("target")]
+[node name="InfoLabel" type="Label" parent="Camera2D/HUD" unique_id=2048152160 node_paths=PackedStringArray("target")]
 layout_mode = 0
 offset_left = -601.0
 offset_top = -465.0
@@ -54,7 +54,7 @@ text = "asdasd"
 script = ExtResource("4_ykegg")
 target = NodePath("../../Node2D")
 
-[node name="Field_1" type="Label" parent="Camera2D"]
+[node name="Field_1" type="Label" parent="Camera2D" unique_id=1771083935]
 offset_left = 384.0
 offset_top = -322.0
 offset_right = 582.0
@@ -63,7 +63,7 @@ text = "Simulation"
 label_settings = ExtResource("4_565nr")
 horizontal_alignment = 1
 
-[node name="Field_2" type="Label" parent="Camera2D"]
+[node name="Field_2" type="Label" parent="Camera2D" unique_id=293246094]
 offset_left = 384.0
 offset_top = -148.5
 offset_right = 582.0
@@ -72,7 +72,7 @@ text = "Seed"
 label_settings = ExtResource("4_565nr")
 horizontal_alignment = 1
 
-[node name="Field_3" type="Label" parent="Camera2D"]
+[node name="Field_3" type="Label" parent="Camera2D" unique_id=748063762]
 offset_left = 384.0
 offset_top = 21.54
 offset_right = 582.0
@@ -81,7 +81,7 @@ text = "Auto Reset"
 label_settings = ExtResource("4_565nr")
 horizontal_alignment = 1
 
-[node name="Field_4" type="Label" parent="Camera2D"]
+[node name="Field_4" type="Label" parent="Camera2D" unique_id=1173820787]
 offset_left = 384.0
 offset_top = 189.865
 offset_right = 582.0
@@ -90,7 +90,7 @@ text = "Chaos"
 label_settings = ExtResource("4_565nr")
 horizontal_alignment = 1
 
-[node name="Field_5" type="Label" parent="Camera2D"]
+[node name="Field_5" type="Label" parent="Camera2D" unique_id=2073550816]
 offset_left = 362.0
 offset_top = 362.0
 offset_right = 602.0
@@ -100,19 +100,19 @@ label_settings = ExtResource("4_565nr")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="MainSettings" type="GridContainer" parent="Camera2D"]
+[node name="MainSettings" type="GridContainer" parent="Camera2D" unique_id=2105040403]
 offset_left = 375.0
 offset_top = -275.0
 offset_right = 589.0
 offset_bottom = -172.0
 columns = 2
 
-[node name="GameSpeed" type="Label" parent="Camera2D/MainSettings"]
+[node name="GameSpeed" type="Label" parent="Camera2D/MainSettings" unique_id=1721208]
 layout_mode = 2
 text = "Speed:"
 label_settings = SubResource("LabelSettings_3y4sw")
 
-[node name="gamespeed" type="LineEdit" parent="Camera2D/MainSettings"]
+[node name="gamespeed" type="LineEdit" parent="Camera2D/MainSettings" unique_id=636369254]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 1
@@ -121,12 +121,12 @@ placeholder_text = "120"
 alignment = 1
 max_length = 3
 
-[node name="Density" type="Label" parent="Camera2D/MainSettings"]
+[node name="Density" type="Label" parent="Camera2D/MainSettings" unique_id=2030246539]
 layout_mode = 2
 text = "Density: "
 label_settings = SubResource("LabelSettings_3y4sw")
 
-[node name="density" type="LineEdit" parent="Camera2D/MainSettings"]
+[node name="density" type="LineEdit" parent="Camera2D/MainSettings" unique_id=2085934334]
 layout_mode = 2
 focus_mode = 1
 theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
@@ -134,12 +134,12 @@ placeholder_text = "0.2"
 alignment = 1
 max_length = 3
 
-[node name="Pixelsize" type="Label" parent="Camera2D/MainSettings"]
+[node name="Pixelsize" type="Label" parent="Camera2D/MainSettings" unique_id=1252431789]
 layout_mode = 2
 text = "Pixelsize: "
 label_settings = SubResource("LabelSettings_3y4sw")
 
-[node name="pixelsize" type="LineEdit" parent="Camera2D/MainSettings"]
+[node name="pixelsize" type="LineEdit" parent="Camera2D/MainSettings" unique_id=982992416]
 layout_mode = 2
 focus_mode = 1
 theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
@@ -147,19 +147,19 @@ placeholder_text = "1"
 alignment = 1
 max_length = 2
 
-[node name="PatternSettings" type="GridContainer" parent="Camera2D"]
+[node name="PatternSettings" type="GridContainer" parent="Camera2D" unique_id=2084024268]
 offset_left = 375.0
 offset_top = -83.45
 offset_right = 589.0
 offset_bottom = -33.449997
 
-[node name="Pattern" type="Label" parent="Camera2D/PatternSettings"]
+[node name="Pattern" type="Label" parent="Camera2D/PatternSettings" unique_id=633755553]
 layout_mode = 2
 text = "Start Pattern:"
 label_settings = SubResource("LabelSettings_3y4sw")
 horizontal_alignment = 1
 
-[node name="pattern" type="OptionButton" parent="Camera2D/PatternSettings"]
+[node name="pattern" type="OptionButton" parent="Camera2D/PatternSettings" unique_id=1889326141]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 1
@@ -167,20 +167,20 @@ mouse_default_cursor_shape = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 alignment = 1
 
-[node name="Restart" type="GridContainer" parent="Camera2D"]
+[node name="Restart" type="GridContainer" parent="Camera2D" unique_id=571733038]
 offset_left = 375.0
 offset_top = 88.0
 offset_right = 588.99945
 offset_bottom = 164.0
 columns = 2
 
-[node name="Pattern" type="Label" parent="Camera2D/Restart"]
+[node name="Pattern" type="Label" parent="Camera2D/Restart" unique_id=908759097]
 layout_mode = 2
 text = "Auto-Restart: "
 label_settings = SubResource("LabelSettings_3y4sw")
 horizontal_alignment = 1
 
-[node name="pattern" type="OptionButton" parent="Camera2D/Restart"]
+[node name="pattern" type="OptionButton" parent="Camera2D/Restart" unique_id=1261908071]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 1
@@ -188,12 +188,12 @@ mouse_default_cursor_shape = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 alignment = 1
 
-[node name="Interval" type="Label" parent="Camera2D/Restart"]
+[node name="Interval" type="Label" parent="Camera2D/Restart" unique_id=346861341]
 layout_mode = 2
 text = "Check Interval: "
 label_settings = SubResource("LabelSettings_3y4sw")
 
-[node name="interval" type="LineEdit" parent="Camera2D/Restart"]
+[node name="interval" type="LineEdit" parent="Camera2D/Restart" unique_id=1535802305]
 layout_mode = 2
 focus_mode = 1
 theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
@@ -201,32 +201,32 @@ placeholder_text = "50"
 alignment = 1
 max_length = 4
 
-[node name="Inject" type="GridContainer" parent="Camera2D"]
+[node name="Inject" type="GridContainer" parent="Camera2D" unique_id=1167137376]
 offset_left = 375.0
 offset_top = 251.51
 offset_right = 588.99945
 offset_bottom = 312.511
 columns = 2
 
-[node name="inject" type="Label" parent="Camera2D/Inject"]
+[node name="inject" type="Label" parent="Camera2D/Inject" unique_id=1457923272]
 layout_mode = 2
 text = "Inject Chaos: "
 label_settings = SubResource("LabelSettings_3y4sw")
 horizontal_alignment = 1
 
-[node name="Inject" type="OptionButton" parent="Camera2D/Inject"]
+[node name="Inject" type="OptionButton" parent="Camera2D/Inject" unique_id=1377587278]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_default_cursor_shape = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 alignment = 1
 
-[node name="Interval" type="Label" parent="Camera2D/Inject"]
+[node name="Interval" type="Label" parent="Camera2D/Inject" unique_id=1991938105]
 layout_mode = 2
 text = "Interval: "
 label_settings = SubResource("LabelSettings_3y4sw")
 
-[node name="interval" type="LineEdit" parent="Camera2D/Inject"]
+[node name="interval" type="LineEdit" parent="Camera2D/Inject" unique_id=1061545763]
 layout_mode = 2
 focus_mode = 1
 theme_override_colors/font_outline_color = Color(0.6955032, 0.6955031, 0.6955031, 1)
@@ -234,7 +234,7 @@ placeholder_text = "50"
 alignment = 1
 max_length = 4
 
-[node name="Field_6" type="Label" parent="Camera2D"]
+[node name="Field_6" type="Label" parent="Camera2D" unique_id=170871228]
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0

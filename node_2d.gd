@@ -1,4 +1,8 @@
-# Godot 4.x - GPU-Accelerated Conway's Game of Life with UI
+## GPU-accelerated Conway's Game of Life renderer for Godot 4.
+##
+## Runs the simulation entirely on the GPU using two ping-pong R8 textures.
+## The greyscale output is read back each frame and displayed via a [Sprite2D]
+## that is created at runtime.
 extends Node2D
 
 @export var grid_w: int = 920
@@ -8,22 +12,19 @@ extends Node2D
 @export_range(0.0, 1.0, 0.01) var random_density: float = 0.10
 @export_range(1, 8, 1) var pixel_scale: int = 1
 
-# Base grid size (wird beim Start gespeichert)
 var base_grid_w: int = 920
 var base_grid_h: int = 925
 
+## Available starting configurations for the grid.
 enum StartPattern { RANDOM, RANDOM_CLUSTERS, ACORN, R_PENTOMINO, GOSPER_GLIDER_GUN }
 @export var start_pattern: StartPattern = StartPattern.RANDOM_CLUSTERS
 
-# Auto-Restart bei Still Life
 @export var auto_restart_on_stable: bool = true
 @export var stability_check_interval: int = 50
 
-# Chaos Injection
 @export var inject_chaos: bool = true
 @export var inject_interval: float = 10.0
 
-# UI References
 @onready var gamespeed_input: LineEdit = $"../MainSettings/gamespeed"
 @onready var density_input: LineEdit = $"../MainSettings/density"
 @onready var pixelsize_input: LineEdit = $"../MainSettings/pixelsize"
@@ -33,7 +34,6 @@ enum StartPattern { RANDOM, RANDOM_CLUSTERS, ACORN, R_PENTOMINO, GOSPER_GLIDER_G
 @onready var inject_option: OptionButton = $"../Inject/Inject"
 @onready var inject_interval_input: LineEdit = $"../Inject/interval"
 
-# GPU Resources
 var rd: RenderingDevice
 var shader: RID
 var pipeline: RID
@@ -43,7 +43,6 @@ var texture_a: RID
 var texture_b: RID
 var current_is_a: bool = true
 
-# Display
 var img: Image
 var tex: ImageTexture
 var sprite: Sprite2D
@@ -51,34 +50,30 @@ var sprite: Sprite2D
 var acc := 0.0
 var generation := 0
 
-# Stability Detection
 var last_grid_hash: int = 0
 var stable_count: int = 0
 
-# Chaos Injection Timer
 var inject_timer: float = 0.0
 
+
+## Initialises the local [RenderingDevice], compiles the compute shader,
+## creates GPU textures, seeds the initial pattern, and sets up the display sprite.
 func _ready() -> void:
-	# Basis-Gridgröße speichern
 	base_grid_w = grid_w
 	base_grid_h = grid_h
-	
-	# RenderingDevice holen
+
 	rd = RenderingServer.create_local_rendering_device()
 	if not rd:
 		push_error("GPU Compute nicht verfügbar!")
 		return
-	
-	# Shader laden
+
 	var shader_file := load("res://game_of_life.glsl") as RDShaderFile
 	var shader_spirv := shader_file.get_spirv()
 	shader = rd.shader_create_from_spirv(shader_spirv)
 	pipeline = rd.compute_pipeline_create(shader)
-	
-	# Texturen erstellen
+
 	create_gpu_textures()
-	
-	# Display setup
+
 	img = Image.create(grid_w, grid_h, false, Image.FORMAT_L8)
 	tex = ImageTexture.create_from_image(img)
 	sprite = Sprite2D.new()
@@ -86,52 +81,40 @@ func _ready() -> void:
 	sprite.centered = false
 	sprite.scale = Vector2(pixel_scale, pixel_scale)
 	add_child(sprite)
-	
-	# Initialisierung
+
 	if random_fill:
 		initialize_pattern()
 	else:
 		clear_grid()
-	
+
 	upload_to_gpu()
 	download_from_gpu()
-	
-	# UI Setup AFTER everything else (deferred to ensure @onready vars are ready)
+
 	call_deferred("setup_ui")
 
+
+## Connects all UI controls to their respective signal handlers and
+## populates option buttons with the available enum values.
 func setup_ui() -> void:
-	print("=== UI SETUP DEBUG ===")
-	print("gamespeed_input: ", gamespeed_input)
-	print("density_input: ", density_input)
-	print("pixelsize_input: ", pixelsize_input)
-	print("pattern_option: ", pattern_option)
-	print("restart_option: ", restart_option)
-	print("restart_interval_input: ", restart_interval_input)
-	print("inject_option: ", inject_option)
-	print("inject_interval_input: ", inject_interval_input)
-	print("======================")
-	
-	# MainSettings - LineEdits
 	if gamespeed_input:
 		gamespeed_input.text = str(ticks_per_second)
 		gamespeed_input.placeholder_text = str(ticks_per_second)
 		gamespeed_input.text_changed.connect(_on_gamespeed_changed)
 		gamespeed_input.text_submitted.connect(func(_t): gamespeed_input.release_focus())
-	
+
 	if density_input:
 		density_input.text = str(random_density)
 		density_input.placeholder_text = str(random_density)
 		density_input.text_changed.connect(_on_density_changed)
 		density_input.text_submitted.connect(func(_t): density_input.release_focus())
-	
+
 	if pixelsize_input:
 		pixelsize_input.text = str(pixel_scale)
 		pixelsize_input.placeholder_text = str(pixel_scale)
-		pixelsize_input.max_length = 1  # Nur 1 Ziffer erlaubt (1-8)
+		pixelsize_input.max_length = 1
 		pixelsize_input.text_changed.connect(_on_pixelsize_changed)
 		pixelsize_input.text_submitted.connect(func(_t): pixelsize_input.release_focus())
-	
-	# PatternSettings - OptionButton
+
 	if pattern_option:
 		pattern_option.clear()
 		pattern_option.add_item("RANDOM", StartPattern.RANDOM)
@@ -142,8 +125,7 @@ func setup_ui() -> void:
 		pattern_option.selected = start_pattern
 		pattern_option.item_selected.connect(_on_pattern_selected)
 		pattern_option.item_selected.connect(func(_i): pattern_option.release_focus())
-	
-	# Restart - OptionButton
+
 	if restart_option:
 		restart_option.clear()
 		restart_option.add_item("true", 0)
@@ -151,14 +133,13 @@ func setup_ui() -> void:
 		restart_option.selected = 0 if auto_restart_on_stable else 1
 		restart_option.item_selected.connect(_on_restart_option_selected)
 		restart_option.item_selected.connect(func(_i): restart_option.release_focus())
-	
+
 	if restart_interval_input:
 		restart_interval_input.text = str(stability_check_interval)
 		restart_interval_input.placeholder_text = str(stability_check_interval)
 		restart_interval_input.text_changed.connect(_on_restart_interval_changed)
 		restart_interval_input.text_submitted.connect(func(_t): restart_interval_input.release_focus())
-	
-	# Inject - OptionButton
+
 	if inject_option:
 		inject_option.clear()
 		inject_option.add_item("true", 0)
@@ -166,74 +147,77 @@ func setup_ui() -> void:
 		inject_option.selected = 0 if inject_chaos else 1
 		inject_option.item_selected.connect(_on_inject_option_selected)
 		inject_option.item_selected.connect(func(_i): inject_option.release_focus())
-	
+
 	if inject_interval_input:
 		inject_interval_input.text = str(inject_interval)
 		inject_interval_input.placeholder_text = str(inject_interval)
 		inject_interval_input.text_changed.connect(_on_inject_interval_changed)
 		inject_interval_input.text_submitted.connect(func(_t): inject_interval_input.release_focus())
 
-# ============ UI CALLBACKS ============
 
+## Updates [member ticks_per_second] when the user edits the speed field.
 func _on_gamespeed_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value >= 1:
 		ticks_per_second = value
-		print("Game Speed updated: ", ticks_per_second)
 
+
+## Updates [member random_density] when the user edits the density field.
 func _on_density_changed(new_text: String) -> void:
 	var value = new_text.to_float()
 	if value >= 0.0 and value <= 1.0:
 		random_density = value
-		print("Density updated: ", random_density)
 
+
+## Updates [member pixel_scale] and recreates the simulation when the grid
+## resolution changes as a result of a different pixel scale.
 func _on_pixelsize_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value >= 1 and value <= 8:
 		pixel_scale = value
-		
-		# Neue Grid-Größe berechnen (kleiner bei größeren Pixeln)
 		var new_grid_w = base_grid_w / pixel_scale
 		var new_grid_h = base_grid_h / pixel_scale
-		
-		print("Pixel Scale: %d | New Grid: %dx%d" % [pixel_scale, new_grid_w, new_grid_h])
-		
-		# Nur neu erstellen wenn sich Größe ändert
+
 		if new_grid_w != grid_w or new_grid_h != grid_h:
 			grid_w = new_grid_w
 			grid_h = new_grid_h
 			recreate_simulation()
 		else:
-			# Nur Sprite skalieren
 			if sprite:
 				sprite.scale = Vector2(pixel_scale, pixel_scale)
 
+
+## Sets the active starting pattern from the option button selection index.
 func _on_pattern_selected(index: int) -> void:
 	start_pattern = index as StartPattern
-	print("Start Pattern updated: ", StartPattern.keys()[start_pattern])
 
+
+## Enables or disables auto-restart based on the option button selection.
 func _on_restart_option_selected(index: int) -> void:
 	auto_restart_on_stable = (index == 0)
-	print("Auto Restart updated: ", auto_restart_on_stable)
 
+
+## Updates [member stability_check_interval] when the user edits the interval field.
 func _on_restart_interval_changed(new_text: String) -> void:
 	var value = new_text.to_int()
 	if value > 0:
 		stability_check_interval = value
-		print("Restart Interval updated: ", stability_check_interval)
 
+
+## Enables or disables chaos injection based on the option button selection.
 func _on_inject_option_selected(index: int) -> void:
 	inject_chaos = (index == 0)
-	print("Inject Chaos updated: ", inject_chaos)
 
+
+## Updates [member inject_interval] when the user edits the inject interval field.
 func _on_inject_interval_changed(new_text: String) -> void:
 	var value = new_text.to_float()
 	if value > 0.0:
 		inject_interval = value
-		print("Inject Interval updated: ", inject_interval)
 
-# ============ REST OF THE CODE ============
 
+## Creates two R8 ping-pong textures for Game of Life state,
+## then builds all uniform sets.
 func create_gpu_textures() -> void:
 	var fmt := RDTextureFormat.new()
 	fmt.width = grid_w
@@ -244,100 +228,110 @@ func create_gpu_textures() -> void:
 		RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT |
 		RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	)
-	
+
 	var empty_data := PackedByteArray()
 	empty_data.resize(grid_w * grid_h)
 	empty_data.fill(0)
-	
+
 	texture_a = rd.texture_create(fmt, RDTextureView.new(), [empty_data])
 	texture_b = rd.texture_create(fmt, RDTextureView.new(), [empty_data])
-	
+
 	create_uniform_sets()
 
+
+## Builds the four uniform sets required for double-buffered GoL dispatch.
 func create_uniform_sets() -> void:
 	var uniform_input_a := RDUniform.new()
 	uniform_input_a.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	uniform_input_a.binding = 0
 	uniform_input_a.add_id(texture_a)
-	
+
 	var uniform_output_b := RDUniform.new()
 	uniform_output_b.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	uniform_output_b.binding = 1
 	uniform_output_b.add_id(texture_b)
-	
+
 	uniform_set_a = rd.uniform_set_create([uniform_input_a, uniform_output_b], shader, 0)
-	
+
 	var uniform_input_b := RDUniform.new()
 	uniform_input_b.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	uniform_input_b.binding = 0
 	uniform_input_b.add_id(texture_b)
-	
+
 	var uniform_output_a := RDUniform.new()
 	uniform_output_a.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
 	uniform_output_a.binding = 1
 	uniform_output_a.add_id(texture_a)
-	
+
 	uniform_set_b = rd.uniform_set_create([uniform_input_b, uniform_output_a], shader, 0)
 
+
+## Advances the simulation, handles input, triggers stability checks,
+## and schedules chaos injection according to [member inject_interval].
 func _process(delta: float) -> void:
 	handle_input()
-	
+
 	var tps: int = maxi(ticks_per_second, 1)
 	var step: float = 1.0 / float(tps)
 	acc += delta
-	
+
 	var steps: int = 0
 	while acc >= step and steps < 10:
 		acc -= step
 		sim_step_gpu()
 		steps += 1
 		generation += 1
-	
+
 	if steps > 0:
 		download_from_gpu()
-		
+
 		if auto_restart_on_stable and generation % stability_check_interval == 0:
 			check_stability()
-	
+
 	if inject_chaos:
 		inject_timer += delta
 		if inject_timer >= inject_interval:
 			inject_timer = 0.0
 			inject_random_life()
 
+
+## Dispatches one Game of Life generation on the GPU using the active
+## ping-pong buffer pair, then flips [member current_is_a].
 func sim_step_gpu() -> void:
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
-	
+
 	if current_is_a:
 		rd.compute_list_bind_uniform_set(compute_list, uniform_set_a, 0)
 	else:
 		rd.compute_list_bind_uniform_set(compute_list, uniform_set_b, 0)
-	
+
 	var x_groups := ceili(grid_w / 8.0)
 	var y_groups := ceili(grid_h / 8.0)
 	rd.compute_list_dispatch(compute_list, x_groups, y_groups, 1)
 	rd.compute_list_end()
-	
+
 	rd.submit()
 	rd.sync()
-	
+
 	current_is_a = !current_is_a
 
+
+## Compares the live-cell count against the previous check to detect a
+## stable or oscillating state. Reinitialises the grid after five
+## consecutive identical counts.
 func check_stability() -> void:
 	var current_texture: RID = texture_a if current_is_a else texture_b
 	var data := rd.texture_get_data(current_texture, 0)
-	
+
 	var alive_count: int = 0
 	for i in range(data.size()):
 		if data[i] > 0:
 			alive_count += 1
-	
+
 	if alive_count == last_grid_hash:
 		stable_count += 1
-		
 		if stable_count >= 5:
-			print("🔄 Still Life erkannt! Neustart bei Generation %d (Alive: %d)" % [generation, alive_count])
 			initialize_pattern()
 			upload_to_gpu()
 			generation = 0
@@ -347,24 +341,27 @@ func check_stability() -> void:
 			return
 	else:
 		stable_count = 0
-	
+
 	last_grid_hash = alive_count
 
+
+## Writes between 50 and 100 random live cells directly into the active
+## GPU texture to perturb a stagnating simulation.
 func inject_random_life() -> void:
 	var current_texture: RID = texture_a if current_is_a else texture_b
 	var data := rd.texture_get_data(current_texture, 0)
-	
+
 	for i in range(randi_range(50, 100)):
 		var idx: int = randi() % data.size()
 		data[idx] = 255
-	
-	rd.texture_update(current_texture, 0, data)
-	print("💥 Chaos injiziert!")
 
+	rd.texture_update(current_texture, 0, data)
+
+
+## Processes keyboard input for simulation control.
+## Releases UI focus on confirm/cancel, and restarts or clears the grid.
 func handle_input() -> void:
-	# Focus von UI-Elementen entfernen bei Tastendruck
 	if Input.is_action_just_pressed("ui_select") or Input.is_action_just_pressed("ui_cancel"):
-		# Release focus von allen UI-Elementen
 		if gamespeed_input and gamespeed_input.has_focus():
 			gamespeed_input.release_focus()
 		if density_input and density_input.has_focus():
@@ -381,18 +378,16 @@ func handle_input() -> void:
 			restart_option.release_focus()
 		if inject_option and inject_option.has_focus():
 			inject_option.release_focus()
-	
+
 	if Input.is_action_just_pressed("ui_select") or Input.is_key_pressed(KEY_R):
-		# Space oder R - Neustart mit neuem Pattern
 		initialize_pattern()
 		upload_to_gpu()
 		generation = 0
 		stable_count = 0
 		last_grid_hash = 0
 		download_from_gpu()
-	
+
 	if Input.is_action_just_pressed("ui_cancel"):
-		# ESC - Grid komplett leeren
 		clear_grid()
 		upload_to_gpu()
 		generation = 0
@@ -400,13 +395,16 @@ func handle_input() -> void:
 		last_grid_hash = 0
 		download_from_gpu()
 
+
 var cpu_grid: PackedByteArray
 
+
+## Resets [member cpu_grid] and seeds it according to [member start_pattern].
 func initialize_pattern() -> void:
 	cpu_grid = PackedByteArray()
 	cpu_grid.resize(grid_w * grid_h)
 	cpu_grid.fill(0)
-	
+
 	match start_pattern:
 		StartPattern.RANDOM:
 			seed_random_simple()
@@ -419,10 +417,15 @@ func initialize_pattern() -> void:
 		StartPattern.GOSPER_GLIDER_GUN:
 			place_gosper_glider_gun()
 
+
+## Fills the grid with uniformly distributed live cells at [member random_density].
 func seed_random_simple() -> void:
 	for i in range(grid_w * grid_h):
 		cpu_grid[i] = 255 if randf() < random_density else 0
 
+
+## Seeds the grid with small random clusters whose total coverage is
+## proportional to [member random_density].
 func seed_random_clusters() -> void:
 	var num_seeds: int = int(grid_w * grid_h * random_density * 0.3)
 	for _i in range(num_seeds):
@@ -437,6 +440,8 @@ func seed_random_clusters() -> void:
 					if x >= 0 and x < grid_w and y >= 0 and y < grid_h:
 						cpu_grid[y * grid_w + x] = 255
 
+
+## Places the Acorn methuselah pattern at the centre of the grid.
 func place_acorn() -> void:
 	var cx: int = grid_w / 2
 	var cy: int = grid_h / 2
@@ -446,6 +451,8 @@ func place_acorn() -> void:
 	]
 	place_pattern(pattern, cx, cy)
 
+
+## Places the R-pentomino methuselah pattern at the centre of the grid.
 func place_r_pentomino() -> void:
 	var cx: int = grid_w / 2
 	var cy: int = grid_h / 2
@@ -455,6 +462,9 @@ func place_r_pentomino() -> void:
 	]
 	place_pattern(pattern, cx, cy)
 
+
+## Places the Gosper Glider Gun near the left edge of the grid,
+## vertically centred.
 func place_gosper_glider_gun() -> void:
 	var cx: int = 50
 	var cy: int = grid_h / 2
@@ -476,6 +486,9 @@ func place_gosper_glider_gun() -> void:
 	]
 	place_pattern(pattern, cx, cy)
 
+
+## Stamps a relative cell pattern into [member cpu_grid] at the given origin.
+## Cells outside grid bounds are silently skipped.
 func place_pattern(pattern: Array[Vector2i], cx: int, cy: int) -> void:
 	for pos in pattern:
 		var x: int = cx + pos.x
@@ -483,26 +496,33 @@ func place_pattern(pattern: Array[Vector2i], cx: int, cy: int) -> void:
 		if x >= 0 and x < grid_w and y >= 0 and y < grid_h:
 			cpu_grid[y * grid_w + x] = 255
 
+
+## Fills [member cpu_grid] with zeros, resulting in an empty grid.
 func clear_grid() -> void:
 	cpu_grid = PackedByteArray()
 	cpu_grid.resize(grid_w * grid_h)
 	cpu_grid.fill(0)
 
+
+## Uploads [member cpu_grid] to [member texture_a] and resets the ping-pong
+## state so texture_a is treated as the current generation.
 func upload_to_gpu() -> void:
 	rd.texture_update(texture_a, 0, cpu_grid)
 	current_is_a = true
 
+
+## Reads the active ping-pong texture from the GPU and updates
+## the display [ImageTexture].
 func download_from_gpu() -> void:
 	var current_texture: RID = texture_a if current_is_a else texture_b
 	var data := rd.texture_get_data(current_texture, 0)
-	
 	img.set_data(grid_w, grid_h, false, Image.FORMAT_L8, data)
 	tex.update(img)
 
+
+## Frees all GPU textures and uniform sets, then recreates them at the
+## current grid dimensions. Used when [member pixel_scale] changes.
 func recreate_simulation() -> void:
-	print("🔄 Recreating simulation with grid: %dx%d, scale: %d" % [grid_w, grid_h, pixel_scale])
-	
-	# Alte GPU Resources freigeben
 	if rd:
 		if uniform_set_a.is_valid():
 			rd.free_rid(uniform_set_a)
@@ -512,29 +532,26 @@ func recreate_simulation() -> void:
 			rd.free_rid(texture_a)
 		if texture_b.is_valid():
 			rd.free_rid(texture_b)
-	
-	# Neue GPU Texturen erstellen
+
 	create_gpu_textures()
-	
-	# Image & Texture neu erstellen
+
 	img = Image.create(grid_w, grid_h, false, Image.FORMAT_L8)
 	tex = ImageTexture.create_from_image(img)
-	
-	# Sprite updaten
+
 	if sprite:
 		sprite.texture = tex
 		sprite.scale = Vector2(pixel_scale, pixel_scale)
-	
-	# Pattern neu initialisieren
+
 	initialize_pattern()
 	upload_to_gpu()
 	generation = 0
 	stable_count = 0
 	last_grid_hash = 0
 	download_from_gpu()
-	
-	print("✅ Simulation recreated!")
 
+
+## Draws a HUD overlay showing generation count, FPS, and active feature flags.
+## Calls [method queue_redraw] every frame to keep the display current.
 func _draw() -> void:
 	var info: String = "Gen: %d | FPS: %d | GPU%s%s" % [
 		generation,
@@ -542,10 +559,12 @@ func _draw() -> void:
 		" | Auto-Restart: ON" if auto_restart_on_stable else "",
 		" | Chaos: ON" if inject_chaos else ""
 	]
-	draw_string(ThemeDB.fallback_font, Vector2(10, 20), info, 
+	draw_string(ThemeDB.fallback_font, Vector2(10, 20), info,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.CYAN)
 	queue_redraw()
 
+
+## Releases all GPU resources when the node leaves the scene tree.
 func _exit_tree() -> void:
 	if rd:
 		rd.free_rid(uniform_set_a)

@@ -117,3 +117,11 @@ No additional installation required.
 ---
 
 *🧬 Life finds a way.*
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+You are free to use, modify, distribute, and build upon this project, including for commercial purposes. See the [LICENSE](LICENSE) file for details.
